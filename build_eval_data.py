@@ -8,6 +8,10 @@ from langchain_experimental.text_splitter import SemanticChunker
 from langchain_community.embeddings import HuggingFaceBgeEmbeddings
 from queue import Queue
 
+import dotenv
+
+dotenv.load_dotenv("env")
+
 model_name = "BAAI/bge-base-en-v1.5"
 model_kwargs = {"device": "cuda"}
 encode_kwargs = {"normalize_embeddings": True}
@@ -38,7 +42,7 @@ def split_text(text: str, semantic_chunker: SemanticChunker) -> list:
 def send_question(
     prompt: str,
 ):
-    token = "token"
+    token = f"{os.environ.get('VSEGPT_TOKEN')}"
 
     client = OpenAI(
         api_key=token,

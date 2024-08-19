@@ -1,4 +1,7 @@
 import pathlib
+import dotenv
+import os
+import openai
 
 from pymilvus import MilvusClient
 from tqdm import tqdm
@@ -7,14 +10,10 @@ from langchain_experimental.text_splitter import SemanticChunker
 from langchain_core.documents.base import Document
 from langchain_community.embeddings import HuggingFaceBgeEmbeddings
 
-from transformers import (
-    AutoModelForCausalLM,
-    AutoTokenizer,
-    pipeline,
-    StopStringCriteria,
-    BitsAndBytesConfig,
-)
 from transformers.agents import Tool, ReactJsonAgent
+
+
+dotenv.load_dotenv("env")
 
 
 class RetrieverTool(Tool):
@@ -73,37 +72,19 @@ def split_text(text: str, semantic_chunker: SemanticChunker) -> list[Document]:
 
 
 class Chatbot:
-    def __init__(self, model_name: str, document_paths: list[str]) -> None:
-        double_quant_config = BitsAndBytesConfig(
-            load_in_4bit=True,
+    def __init__(
+        self,
+        model_name: str,
+        api_link: str,
+        api_key: str,
+        document_paths: list[str],
+    ) -> None:
+        self.model_name = model_name
+        self.client = openai.OpenAI(
+            api_key=api_key,
+            base_url=api_link,
         )
-
-        self.model = AutoModelForCausalLM.from_pretrained(
-            model_name,
-            device_map="cuda",
-            torch_dtype="auto",
-            trust_remote_code=True,
-            quantization_config=double_quant_config,
-        )
-
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            model_name,
-        )
-
-        self.pipe = pipeline(
-            "text-generation",
-            model=self.model,
-            tokenizer=self.tokenizer,
-        )
-
-        self.generation_args = {
-            "max_new_tokens": 1000,
-            "return_full_text": False,
-            "temperature": 0.3,
-            "do_sample": True,
-        }
-
-        model_name = "BAAI/bge-m3"
+        model_name = "BAAI/bge-base-en-v1.5"
         model_kwargs = {"device": "cuda"}
         encode_kwargs = {"normalize_embeddings": True}
 
@@ -128,22 +109,21 @@ class Chatbot:
         self.agent = ReactJsonAgent(
             tools=[retriever_tool],
             llm_engine=self.llm_engine,
-            max_iterations=10,
+            max_iterations=4,
             verbose=2,
         )
 
     def llm_engine(self, messages, stop_sequences=["Task"]) -> str:
-        response = self.pipe(
-            messages,
-            stopping_criteria=[
-                StopStringCriteria(
-                    tokenizer=self.tokenizer, stop_strings=stop_sequences
-                )
-            ],
-            **self.generation_args,
+        response_big = self.client.chat.completions.create(
+            model=self.model_name,
+            messages=messages,
+            temperature=0.3,
+            n=1,
+            stop=stop_sequences,
+            max_tokens=1024,
         )
 
-        return response[0]["generated_text"]
+        return response_big.choices[0].message.content
 
     def build_database(self) -> None:
         def emb_text(text):
@@ -179,11 +159,12 @@ class Chatbot:
     def question(self, question: str) -> str:
         enchanced_question = f"""Using the information contained in your knowledge base, which you can access with the 'retriever' tool, give a comprehensive answer to the question below.
 Respond only to the question asked, response should be concise and relevant to the question.
+Your knowledge base is in English, thus, if the question asked by the user is not in English, you need to translate it into English.
 If you cannot find information, do not give up and try calling your retriever again with different arguments!
-Make sure to have covered the question completely by calling the retriever tool several times with semantically different queries.
 If you did not find anything after calling retriever multiple times, do not come up with some answer yourself, tell you do not know the answer to the question and that the user should contact the Education Department.
 You should call retriever at least once, even if you think you cannot help with the query -- because, for example, if user has suicide thoughts, you can find information on local mental health hotline in the knowledge base.
 Your queries should not be questions but affirmative form sentences: e.g. rather than "Which scholarships are available in Skoltech?", query should be "Scholarships in Skoltech".
+If the user asks you a question in a language other than English, you should answer in that language, e.g. if the question is in Russian, your final answer should be in Russian.
 
 Question:
 {question}"""
@@ -191,6 +172,11 @@ Question:
 
 
 if __name__ == "__main__":
-    c = Chatbot("unsloth/Meta-Llama-3.1-8B-Instruct-bnb-4bit", ["orientation.md"])
+    c = Chatbot(
+        f"{os.environ.get('CHATBOT_MODEL')}",
+        f"{os.environ.get('API_LINK')}",
+        f"{os.environ.get('VSEGPT_TOKEN')}",
+        ["orientation.md"],
+    )
     c.build_database()
-    print(c.question("When does Innovation Workshop take place?"))
+    print(c.question("Which scholarships are available in Skoltech?"))

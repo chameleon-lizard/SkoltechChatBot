@@ -1,3 +1,8 @@
 venv/
 .mypy_cache/
-
+.env
+hf_milvus_demo.db
+.hf_milvus_demo.db.lock
+*.json
+__pycache__/
+rag_orientation_qa/
