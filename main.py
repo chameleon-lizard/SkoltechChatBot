@@ -119,7 +119,7 @@ class Chatbot:
             messages=messages,
             temperature=0.3,
             n=1,
-            stop=stop_sequences,
+            stop=stop_sequences + ["<end_action>"],
             max_tokens=1024,
         )
 
@@ -165,6 +165,7 @@ If you did not find anything after calling retriever multiple times, do not come
 You should call retriever at least once, even if you think you cannot help with the query -- because, for example, if user has suicide thoughts, you can find information on local mental health hotline in the knowledge base.
 Your queries should not be questions but affirmative form sentences: e.g. rather than "Which scholarships are available in Skoltech?", query should be "Scholarships in Skoltech".
 If the user asks you a question in a language other than English, you should answer in that language, e.g. if the question is in Russian, your final answer should be in Russian.
+The knowledge base is about Russian University called Skoltech. Questions on all other themes should not be answered if responses are not present in the knowledge base.
 
 Question:
 {question}"""
