@@ -11,16 +11,16 @@ import dotenv
 
 dotenv.load_dotenv("env")
 
-judge_model = "openai/gpt-4o-2024-08-06"
+judge_model = "openai/gpt-4o-mini"
 
 c = Chatbot(
     f"{os.environ.get('CHATBOT_MODEL')}",
     f"{os.environ.get('API_LINK')}",
     f"{os.environ.get('VSEGPT_TOKEN')}",
     ["orientation.md"],
+    verbose=False,
 )
 c.build_database()
-print(c.question("Which scholarships are available in Skoltech?"))
 
 data = json.loads(pathlib.Path("questions_ru.json").read_text())
 
@@ -102,7 +102,6 @@ Score 5: The response is completely correct, accurate, and factual.
 
 res = []
 for item in tqdm(flattened_data):
-    print(json.dumps(item, indent=2))
     eval = send_question(
         EVALUATION_PROMPT.format(
             instruction=item["question"],
@@ -111,6 +110,7 @@ for item in tqdm(flattened_data):
         )
     )
     feedback, score = [i.strip() for i in eval.split("[RESULT]")]
+    print(f"Score: {score}\nFeedback: {feedback}")
     item["feedback"] = feedback
     item["score"] = score
     res.append(item)
@@ -127,3 +127,4 @@ print(df.score.value_counts(), end="\n\n")
 print("Mean score: " + str(df.score[df.score != 0].mean()))
 print("Median score: " + str(df.score[df.score != 0].median()))
 print("Percentage: " + str(df.score[df.score != 0].mean() / 5 * 100))
+

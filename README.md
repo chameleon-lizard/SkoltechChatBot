@@ -101,21 +101,34 @@ Median score: 4.0
 Percentage: 71.85185185185186
 
 
-## qwen-2-7b-instruct-q8 local, bge-m3 embedder, paragraph_chunker, 6 chunks:
+## qwen-2-7b-instruct-q8 local, bge-m3-en-ru embedder, paragraph_chunker, 24 chunks, BAAI/bge-reranker-v2-m3 reranker, top-n 6: 
 
 Judge: openai/gpt-4o-mini
 
-
 score
-5    23
-4    31
-3    10
-2     5
-1    12
+5    24
+4    24
+3    15
+2     4
+1    14
 0     4
 
-Mean score: 3.5925925925925926
+Mean score: 3.493827160493827
 Median score: 4.0
-Percentage: 71.85185185185186
+Percentage: 69.87654320987654
+
+## qwen-2-7b-instruct-q8 local, BAAI/bge-large-en-v1.5 embedder, paragraph_chunker, 24 chunks, BAAI/bge-reranker-v2-m3 reranker, top-n 6: 
+
+score
+5    29
+4    28
+3    11
+2     2
+1     8
+0     7
+
+Mean score: 3.871794871794872
+Median score: 4.0
+Percentage: 77.43589743589745
 
 

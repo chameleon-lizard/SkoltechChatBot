@@ -1,4 +1,5 @@
 import pathlib
+import itertools
 import dotenv
 import os
 import openai
@@ -10,6 +11,8 @@ from langchain_core.documents.base import Document
 from langchain_community.embeddings import HuggingFaceBgeEmbeddings
 
 from transformers.agents import Tool, ReactJsonAgent
+
+from FlagEmbedding import FlagReranker
 
 
 dotenv.load_dotenv("env")
@@ -26,11 +29,15 @@ class RetrieverTool(Tool):
     }
     output_type = "text"
 
-    def __init__(self, vectordb, collection_name, embedder_func, **kwargs):
+    def __init__(
+        self, vectordb, collection_name, embedder_func, reranker, verbose, **kwargs
+    ):
         super().__init__(**kwargs)
         self.vectordb = vectordb
         self.collection_name = collection_name
         self.embedder_func = embedder_func
+        self.reranker = reranker
+        self.verbose = verbose
 
     def forward(self, query: str) -> str:
         assert isinstance(query, str), "Your search query must be a string"
@@ -40,7 +47,7 @@ class RetrieverTool(Tool):
             data=[
                 self.embedder_func(query)
             ],  # Use the `emb_text` function to convert the question to an embedding vector
-            limit=6,  # Return top 3 results
+            limit=24,  # Return top N results
             search_params={"metric_type": "IP", "params": {}},  # Inner product distance
             output_fields=["text"],  # Return the text field
         )
@@ -49,11 +56,20 @@ class RetrieverTool(Tool):
             (res["entity"]["text"], res["distance"]) for res in search_res[0]
         ]
 
+        if self.verbose:
+            print(retrieved_lines_with_distances)
+
+        reranked_lines = [
+            (self.reranker.compute_score([query, line[0]], normalize=True), line[0])
+            for line in retrieved_lines_with_distances
+        ]
+        reranked_lines = sorted(reranked_lines, key=lambda x: x[0], reverse=True)[:6]
+
         return "\nRetrieved documents:\n" + "".join(
             [
-                f"===== Document {str(i)}, similarity to query: {line_with_distance[1]} =====\n"
-                + line_with_distance[0]
-                for i, line_with_distance in enumerate(retrieved_lines_with_distances)
+                f"===== Document {str(i)}, similarity to query: {line_with_distance[0]} =====\n"
+                + line_with_distance[1]
+                for i, line_with_distance in enumerate(reranked_lines)
             ]
         )
 
@@ -67,6 +83,7 @@ def split_text(text: str) -> list[Document]:
             metadata={"source": "orientation.md"},
         )
         for _ in res
+        if len(_) > 70
     ]
 
 
@@ -77,13 +94,16 @@ class Chatbot:
         api_link: str,
         api_key: str,
         document_paths: list[str],
+        verbose=True,
     ) -> None:
+        self.verbose = verbose
+
         self.model_name = model_name
         self.client = openai.OpenAI(
             api_key=api_key,
             base_url=api_link,
         )
-        model_name = "BAAI/bge-m3"
+        model_name = "BAAI/bge-large-en-v1.5"
         model_kwargs = {"device": "cuda"}
         encode_kwargs = {"normalize_embeddings": True}
 
@@ -93,6 +113,7 @@ class Chatbot:
             encode_kwargs=encode_kwargs,
         )
 
+        self.reranker_model = FlagReranker("BAAI/bge-reranker-v2-m3", use_fp16=True)
         self.docs = [
             pathlib.Path(document_path).read_text() for document_path in document_paths
         ]
@@ -100,14 +121,18 @@ class Chatbot:
         self.milvus_client = MilvusClient(uri="./hf_milvus_demo.db")
         self.collection_name = "rag_collection"
         retriever_tool = RetrieverTool(
-            self.milvus_client, self.collection_name, self.embedding_model.embed_query
+            self.milvus_client,
+            self.collection_name,
+            self.embedding_model.embed_query,
+            self.reranker_model,
+            self.verbose,
         )
 
         self.agent = ReactJsonAgent(
             tools=[retriever_tool],
             llm_engine=self.llm_engine,
             max_iterations=4,
-            verbose=2,
+            verbose=2 if verbose else 0,
         )
 
     def llm_engine(self, messages, stop_sequences=["Task"]) -> str:
@@ -166,7 +191,13 @@ The knowledge base is about Russian University called Skoltech. Questions on all
 
 Question:
 {question}"""
-        return self.agent.run(enchanced_question)
+
+        res = self.agent.run(enchanced_question)
+
+        if self.verbose:
+            print(question, res)
+
+        return res
 
 
 if __name__ == "__main__":
@@ -177,4 +208,4 @@ if __name__ == "__main__":
         ["orientation.md"],
     )
     c.build_database()
-    print(c.question("Which scholarships are available in Skoltech?"))
+    print(c.question("What are the sizes of scholarships in Skoltech?"))
