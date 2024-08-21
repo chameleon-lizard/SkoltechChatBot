@@ -17,6 +17,48 @@ from FlagEmbedding import FlagReranker
 
 dotenv.load_dotenv("env")
 
+RUSSIAN_ALPHABET = (
+    "а",
+    "б",
+    "в",
+    "г",
+    "д",
+    "е",
+    "ж",
+    "з",
+    "и",
+    "й",
+    "к",
+    "л",
+    "м",
+    "н",
+    "о",
+    "п",
+    "р",
+    "с",
+    "т",
+    "у",
+    "ф",
+    "х",
+    "ц",
+    "ч",
+    "ш",
+    "щ",
+    "ъ",
+    "ы",
+    "ь",
+    "э",
+    "ю",
+    "я",
+)
+
+
+def is_russian(query: str) -> bool:
+    return (
+        sum((_ in RUSSIAN_ALPHABET for _ in query.lower().strip()))
+        < len(query.strip()) * 0.2
+    )
+
 
 class RetrieverTool(Tool):
     name = "retriever"
@@ -30,7 +72,14 @@ class RetrieverTool(Tool):
     output_type = "text"
 
     def __init__(
-        self, vectordb, collection_name, embedder_func, reranker, verbose, **kwargs
+        self,
+        vectordb,
+        collection_name,
+        embedder_func,
+        reranker,
+        verbose,
+        translate,
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.vectordb = vectordb
@@ -38,9 +87,12 @@ class RetrieverTool(Tool):
         self.embedder_func = embedder_func
         self.reranker = reranker
         self.verbose = verbose
+        self.translate = translate
 
     def forward(self, query: str) -> str:
         assert isinstance(query, str), "Your search query must be a string"
+        if not is_russian(query):
+            query = self.translate(query, "en")
 
         search_res = self.vectordb.search(
             collection_name=self.collection_name,
@@ -126,6 +178,7 @@ class Chatbot:
             self.embedding_model.embed_query,
             self.reranker_model,
             self.verbose,
+            self.translate,
         )
 
         self.agent = ReactJsonAgent(
@@ -178,6 +231,24 @@ class Chatbot:
             )
             insert_res["insert_count"]
 
+    def translate(self, query: str, lang: str) -> str:
+        prompt = 'Please ignore all previous instructions. Please respond only in the {language} language. Do not explain what you are doing. Do not self reference. You are an expert translator that will be tasked with translating and improving the spelling/grammar/literary quality of a piece of text. Please rewrite the translated text in your tone of voice and writing style. Ensure that the meaning of the original text is not changed. Respond only with the translation, do not add any other words and phrases, do not agree with me and say "okay, here it is" and do not add any other notes. If you succeed, you will get $380.'
+
+        match lang:
+            case "ru":
+                lang = "Russian"
+            case "eng":
+                lang = "English"
+
+        prompt.format(language=lang)
+
+        messages = [
+            {"role": "system", "content": prompt},
+            {"role": "user", "content": query},
+        ]
+
+        return self.llm_engine(messages)
+
     def question(self, question: str) -> str:
         enchanced_question = f"""Using the information contained in your knowledge base, which you can access with the 'retriever' tool, give a comprehensive answer to the question below.
 Respond only to the question asked, response should be concise and relevant to the question.
@@ -197,7 +268,21 @@ Question:
         if self.verbose:
             print(question, res)
 
-        return res
+        if "Thought: " in res or '"action": "' in res:
+            if "final_answer" in res:
+                res = res.split('final_answer"')[1]
+                res = res.split("\n}")[0]
+            else:
+                res = "I'm sorry, I did not find any information about this topic in my knowledge base. I recommend contacting the Education Department for assistance."
+
+        if (is_russian(question) and is_russian(res)) or (
+            not is_russian(question) and is_russian(res)
+        ):
+            return res
+        elif is_russian(question) and not is_russian(res):
+            return self.translate(res, "ru")
+        else:
+            return self.translate(res, "en")
 
 
 if __name__ == "__main__":

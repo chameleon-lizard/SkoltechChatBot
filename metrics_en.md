@@ -11,6 +11,7 @@ score
 2     4
 1     6
 0    28
+Name: count, dtype: int64
 
 Mean score: 3.4827586206896552
 Median score: 4.0
@@ -28,6 +29,7 @@ score
 2     5
 1    10
 0     4
+Name: count, dtype: int64
 
 Mean score: 3.6666666666666665
 Median score: 4.0
@@ -44,6 +46,7 @@ score
 2     7
 1     9
 0     7
+Name: count, dtype: int64
 
 Mean score: 3.628205128205128
 Median score: 4.0
@@ -60,6 +63,7 @@ score
 2     8
 1     5
 0     4
+Name: count, dtype: int64
 
 Mean score: 3.7777777777777777
 Median score: 4.0
@@ -77,6 +81,7 @@ score
 2     8
 1     9
 0     5
+Name: count, dtype: int64
 
 Mean score: 3.625
 Median score: 4.0
@@ -95,6 +100,7 @@ score
 2     5
 1    12
 0     4
+Name: count, dtype: int64
 
 Mean score: 3.5925925925925926
 Median score: 4.0
@@ -112,6 +118,7 @@ score
 2     4
 1    14
 0     4
+Name: count, dtype: int64
 
 Mean score: 3.493827160493827
 Median score: 4.0
@@ -126,9 +133,79 @@ score
 2     2
 1     8
 0     7
+Name: count, dtype: int64
 
 Mean score: 3.871794871794872
 Median score: 4.0
 Percentage: 77.43589743589745
 
+## qwen-2-7b-instruct local, BAAI/bge-large-en-v1.5 embedder, paragraph_chunker, 24 chunks, BAAI/bge-reranker-v2-m3 reranker, top-n 6: 
+
+Judge: openai/gpt-4o-mini
+
+score
+5    27
+4    32
+3     5
+2     4
+1     9
+0     8
+Name: count, dtype: int64
+
+Mean score: 3.831168831168831
+Median score: 4.0
+Percentage: 76.62337662337661
+
+
+## meta-llama/llama-3.1-70b-instruct api, BAAI/bge-large-en-v1.5 embedder, paragraph_chunker, 24 chunks, BAAI/bge-reranker-v2-m3 reranker, top-n 6: 
+
+Judge: openai/gpt-4o-mini
+
+score
+5    32
+4    23
+3     3
+2     1
+1     2
+0    24
+Name: count, dtype: int64
+
+Mean score: 4.344262295081967
+Median score: 5.0
+Percentage: 86.88524590163935
+
+
+## qwen-2-7b-instruct localqwen-2-7b-instruct local, BAAI/bge-large-en-v1.5 embedder, paragraph_chunker, 24 chunks, BAAI/bge-reranker-v2-m3 reranker, top-n 6, with qwen translation prompt:
+
+Judge: openai/gpt-4o-mini
+
+score
+5    27
+4    33
+3     6
+2     3
+1    10
+0     6
+Name: count, dtype: int64
+
+Mean score: 3.810126582278481
+Median score: 4.0
+Percentage: 76.20253164556962
+
+
+## qwen-2-7b-instruct localqwen-2-7b-instruct local, BAAI/bge-large-en-v1.5 embedder, paragraph_chunker, 24 chunks, BAAI/bge-reranker-v2-m3 reranker, top-n 6, with qwen translation prompt, manual fixing of thought:
+Judge: openai/gpt-4o-mini
+
+score
+5    26
+4    32
+3    11
+2     1
+1     6
+0     9
+Name: count, dtype: int64
+
+Mean score: 3.9342105263157894
+Median score: 4.0
+Percentage: 78.6842105263158
 
