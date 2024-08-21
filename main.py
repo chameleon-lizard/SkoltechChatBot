@@ -6,7 +6,6 @@ import openai
 from pymilvus import MilvusClient
 from tqdm import tqdm
 
-from langchain_experimental.text_splitter import SemanticChunker
 from langchain_core.documents.base import Document
 from langchain_community.embeddings import HuggingFaceBgeEmbeddings
 
@@ -41,7 +40,7 @@ class RetrieverTool(Tool):
             data=[
                 self.embedder_func(query)
             ],  # Use the `emb_text` function to convert the question to an embedding vector
-            limit=3,  # Return top 3 results
+            limit=6,  # Return top 3 results
             search_params={"metric_type": "IP", "params": {}},  # Inner product distance
             output_fields=["text"],  # Return the text field
         )
@@ -59,16 +58,16 @@ class RetrieverTool(Tool):
         )
 
 
-def split_text(text: str, semantic_chunker: SemanticChunker) -> list[Document]:
-    res = []
-    buff = ""
-    for line in text.splitlines():
-        if line.strip().startswith("###"):
-            res.append(buff)
-            buff = ""
-        buff += "\n" + line
+def split_text(text: str) -> list[Document]:
+    res = text.split("\n")
 
-    return semantic_chunker.create_documents(res)
+    return [
+        Document(
+            page_content=_,
+            metadata={"source": "orientation.md"},
+        )
+        for _ in res
+    ]
 
 
 class Chatbot:
@@ -84,7 +83,7 @@ class Chatbot:
             api_key=api_key,
             base_url=api_link,
         )
-        model_name = "BAAI/bge-base-en-v1.5"
+        model_name = "BAAI/bge-m3"
         model_kwargs = {"device": "cuda"}
         encode_kwargs = {"normalize_embeddings": True}
 
@@ -93,8 +92,6 @@ class Chatbot:
             model_kwargs=model_kwargs,
             encode_kwargs=encode_kwargs,
         )
-
-        self.text_splitter = SemanticChunker(self.embedding_model)
 
         self.docs = [
             pathlib.Path(document_path).read_text() for document_path in document_paths
@@ -136,7 +133,7 @@ class Chatbot:
             self.milvus_client.drop_collection(self.collection_name)
 
         for doc in self.docs:
-            chunks = split_text(doc, self.text_splitter)
+            chunks = split_text(doc)
             text_lines = [chunk.page_content for chunk in chunks]
 
             self.milvus_client.create_collection(

@@ -49,3 +49,73 @@ Mean score: 3.628205128205128
 Median score: 4.0
 Percentage: 72.56410256410255
 
+## qwen-2-7b-instruct vsegpt api, bge-base-en-1.5 embedder, paragraph_chunker, 6 chunks:
+
+Judge: openai/gpt-4o-2024-08-06
+
+score
+5    26
+4    29
+3    13
+2     8
+1     5
+0     4
+
+Mean score: 3.7777777777777777
+Median score: 4.0
+Percentage: 75.55555555555556
+
+## qwen-2-7b-instruct-q8 local, bge-base-en-1.5 embedder, paragraph_chunker, 6 chunks:
+
+Judge: openai/gpt-4o-2024-08-06
+
+
+score
+5    23
+4    30
+3    10
+2     8
+1     9
+0     5
+
+Mean score: 3.625
+Median score: 4.0
+Percentage: 72.5
+
+
+## qwen-2-7b-instruct-q8 local, bge-base-en-1.5 embedder, paragraph_chunker, 6 chunks:
+
+Judge: openai/gpt-4o-mini
+
+
+score
+5    23
+4    31
+3    10
+2     5
+1    12
+0     4
+
+Mean score: 3.5925925925925926
+Median score: 4.0
+Percentage: 71.85185185185186
+
+
+## qwen-2-7b-instruct-q8 local, bge-m3 embedder, paragraph_chunker, 6 chunks:
+
+Judge: openai/gpt-4o-mini
+
+
+score
+5    23
+4    31
+3    10
+2     5
+1    12
+0     4
+
+Mean score: 3.5925925925925926
+Median score: 4.0
+Percentage: 71.85185185185186
+
+

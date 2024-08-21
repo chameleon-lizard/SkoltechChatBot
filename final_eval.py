@@ -4,13 +4,15 @@ import pathlib
 import tqdm
 
 
-flattened_data = json.loads(pathlib.Path("eval_result.json").read_text())
+flattened_data = json.loads(
+    pathlib.Path("eval_result_qwen_local_paragraph_chunker.json").read_text()
+)
 
 
 def send_question(
     prompt: str,
 ):
-    token = "sk-or-vv-666948b23392de00e062663b513b8b50ef62720b9e6d88f855271f685eae42e1"
+    token = "sk-or-vv-e6709f548f9475aa3a4578e4d713adc2432f098537ea687622a9b82034275e77"
 
     client = openai.OpenAI(
         api_key=token,
@@ -76,5 +78,5 @@ for item in tqdm.tqdm(flattened_data):
     res.append(item)
 
 
-with open("output_scored.json", "w") as f:
+with open("output_scored_qwen_local_paragraph_chunker.json", "w") as f:
     json.dump(res, f, indent=4)
