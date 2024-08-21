@@ -2,12 +2,16 @@ import pathlib
 import json
 from main import Chatbot
 from tqdm import tqdm
+import openai
+
+import pandas as pd
 
 import os
 import dotenv
 
 dotenv.load_dotenv("env")
 
+judge_model = "openai/gpt-4o-2024-08-06"
 
 c = Chatbot(
     f"{os.environ.get('CHATBOT_MODEL')}",
@@ -18,7 +22,7 @@ c = Chatbot(
 c.build_database()
 print(c.question("Which scholarships are available in Skoltech?"))
 
-data = json.loads(pathlib.Path("output.json").read_text())
+data = json.loads(pathlib.Path("questions_ru.json").read_text())
 
 outputs = []
 for example in tqdm(data):
@@ -37,5 +41,89 @@ for example in tqdm(data):
 
     outputs.append(result)
 
-with open("eval_result.json", "w") as f:
+with open("eval_ans.json", "w") as f:
     json.dump(outputs, f)
+
+flattened_data = json.loads(pathlib.Path("eval_ans.json").read_text())
+
+
+def send_question(
+    prompt: str,
+):
+    token = f"{os.environ.get('VSEGPT_TOKEN')}"
+
+    client = openai.OpenAI(
+        api_key=token,
+        base_url="https://api.vsegpt.ru:7090/v1",
+    )
+
+    messages = []
+    messages.append({"role": "user", "content": prompt})
+
+    response_big = client.chat.completions.create(
+        model=judge_model,
+        messages=messages,
+        temperature=0.7,
+        n=1,
+        max_tokens=512,
+    )
+
+    response = response_big.choices[0].message.content
+
+    return response
+
+
+EVALUATION_PROMPT = """###Task Description:
+An instruction (might include an Input inside it), a response to evaluate, a reference answer that gets a score of 5, and a score rubric representing a evaluation criteria are given.
+1. Write a detailed feedback that assess the quality of the response strictly based on the given score rubric, not evaluating in general.
+2. After writing a feedback, write a score that is an integer between 0 and 5. You should refer to the score rubric.
+3. The output format should look as follows: \"Feedback: {{write a feedback for criteria}} [RESULT] {{an integer number between 0 and 5}}\"
+4. Please do not generate any other opening, closing, and explanations. Be sure to include [RESULT] in your output.
+
+###The instruction to evaluate:
+{instruction}
+
+###Response to evaluate:
+{response}
+
+###Reference Answer (Score 5):
+{reference_answer}
+
+###Score Rubrics:
+[Is the response correct, accurate, and factual based on the reference answer?]
+Score 0: The response is a recommendation to refer to Education Department.
+Score 1: The response is completely incorrect, inaccurate, and/or not factual.
+Score 2: The response is mostly incorrect, inaccurate, and/or not factual.
+Score 3: The response is somewhat correct, accurate, and/or factual.
+Score 4: The response is mostly correct, accurate, and factual.
+Score 5: The response is completely correct, accurate, and factual.
+
+###Feedback:"""
+
+res = []
+for item in tqdm(flattened_data):
+    print(json.dumps(item, indent=2))
+    eval = send_question(
+        EVALUATION_PROMPT.format(
+            instruction=item["question"],
+            response=item["generated_answer"],
+            reference_answer=item["true_answer"],
+        )
+    )
+    feedback, score = [i.strip() for i in eval.split("[RESULT]")]
+    item["feedback"] = feedback
+    item["score"] = score
+    res.append(item)
+
+
+with open("eval_res.json", "w") as f:
+    json.dump(res, f, indent=4)
+
+df = pd.read_json("eval_res.json")
+
+print(f"Model: {os.environ.get('CHATBOT_MODEL')}\n")
+print(f"Judge: {judge_model}\n")
+print(df.score.value_counts(), end="\n\n")
+print("Mean score: " + str(df.score[df.score != 0].mean()))
+print("Median score: " + str(df.score[df.score != 0].median()))
+print("Percentage: " + str(df.score[df.score != 0].mean() / 5 * 100))
