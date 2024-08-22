@@ -2,13 +2,19 @@ import pathlib
 import itertools
 import dotenv
 import os
+
+from langchain_core import documents
 import openai
 
 from pymilvus import MilvusClient
+
 from tqdm import tqdm
 
 from langchain_core.documents.base import Document
 from langchain_community.embeddings import HuggingFaceBgeEmbeddings
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_community.retrievers import BM25Retriever
+
 
 from transformers.agents import Tool, ReactJsonAgent
 
@@ -74,7 +80,8 @@ class RetrieverTool(Tool):
     def __init__(
         self,
         vectordb,
-        collection_name,
+        vector_collection,
+        bm25,
         embedder_func,
         reranker,
         verbose,
@@ -83,7 +90,8 @@ class RetrieverTool(Tool):
     ):
         super().__init__(**kwargs)
         self.vectordb = vectordb
-        self.collection_name = collection_name
+        self.vector_collection = vector_collection
+        self.bm25 = bm25
         self.embedder_func = embedder_func
         self.reranker = reranker
         self.verbose = verbose
@@ -95,7 +103,7 @@ class RetrieverTool(Tool):
             query = self.translate(query, "en")
 
         search_res = self.vectordb.search(
-            collection_name=self.collection_name,
+            collection_name=self.vector_collection,
             data=[
                 self.embedder_func(query)
             ],  # Use the `emb_text` function to convert the question to an embedding vector
@@ -107,6 +115,10 @@ class RetrieverTool(Tool):
         retrieved_lines_with_distances = [
             (res["entity"]["text"], res["distance"]) for res in search_res[0]
         ]
+
+        bm25_res = self.bm25.invoke(query, k=10)
+
+        retrieved_lines_with_distances += [(_.page_content, 0) for _ in bm25_res]
 
         if self.verbose:
             print(retrieved_lines_with_distances)
@@ -126,13 +138,13 @@ class RetrieverTool(Tool):
         )
 
 
-def split_text(text: str) -> list[Document]:
+def split_text(text: str, document_path: str) -> list[Document]:
     res = text.split("\n")
 
     return [
         Document(
             page_content=_,
-            metadata={"source": "orientation.md"},
+            metadata={"source": document_path},
         )
         for _ in res
         if len(_) > 70
@@ -167,14 +179,30 @@ class Chatbot:
 
         self.reranker_model = FlagReranker("BAAI/bge-reranker-v2-m3", use_fp16=True)
         self.docs = [
-            pathlib.Path(document_path).read_text() for document_path in document_paths
+            (pathlib.Path(document_path).read_text(), document_path)
+            for document_path in document_paths
         ]
 
         self.milvus_client = MilvusClient(uri="./hf_milvus_demo.db")
-        self.collection_name = "rag_collection"
+
+        self.vector_collection = "vector_collection"
+
+        # BM25 collection
+        recursive_chunker = RecursiveCharacterTextSplitter(
+            chunk_size=100,
+            chunk_overlap=10,
+        )
+
+        bm25_docs = recursive_chunker.split_text(
+            "\n".join([doc[0] for doc in self.docs]),
+        )
+
+        self.bm25 = BM25Retriever.from_texts(bm25_docs)
+
         retriever_tool = RetrieverTool(
             self.milvus_client,
-            self.collection_name,
+            self.vector_collection,
+            self.bm25,
             self.embedding_model.embed_query,
             self.reranker_model,
             self.verbose,
@@ -200,6 +228,9 @@ class Chatbot:
 
         return response_big.choices[0].message.content
 
+    def load_database(self) -> None:
+        self.milvus_client.load_collection(self.vector_collection)
+
     def build_database(self) -> None:
         def emb_text(text):
             return self.embedding_model.embed_query(text)
@@ -207,15 +238,16 @@ class Chatbot:
         test_embedding = emb_text("This is a test")
         embedding_dim = len(test_embedding)
 
-        if self.milvus_client.has_collection(self.collection_name):
-            self.milvus_client.drop_collection(self.collection_name)
+        if self.milvus_client.has_collection(self.vector_collection):
+            self.milvus_client.drop_collection(self.vector_collection)
 
-        for doc in self.docs:
-            chunks = split_text(doc)
+        for doc, document_path in self.docs:
+            # Vector collection
+            chunks = split_text(doc, document_path)
             text_lines = [chunk.page_content for chunk in chunks]
 
             self.milvus_client.create_collection(
-                collection_name=self.collection_name,
+                collection_name=self.vector_collection,
                 dimension=embedding_dim,
                 metric_type="IP",  # Inner product distance
                 consistency_level="Strong",  # Strong consistency level
@@ -227,7 +259,7 @@ class Chatbot:
                 data.append({"id": i, "vector": emb_text(line), "text": line})
 
             insert_res = self.milvus_client.insert(
-                collection_name=self.collection_name, data=data
+                collection_name=self.vector_collection, data=data
             )
             insert_res["insert_count"]
 
