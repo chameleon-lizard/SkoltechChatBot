@@ -9,24 +9,14 @@ from main import Chatbot
 
 def format_for_telegram(text: str) -> str:
     return (
-        text.replace("_", "\_")
-        .replace("*", "\*")
-        .replace("[", "\[")
-        .replace("]", "\]")
-        .replace("(", "\(")
-        .replace(")", "\)")
+        text.replace("*", "\*")
         .replace("~", "\~")
         .replace("`", "\`")
         .replace(">", "\>")
         .replace("#", "\#")
-        .replace("+", "\+")
-        .replace("-", "\-")
-        .replace("=", "\=")
         .replace("|", "\|")
         .replace("{", "\{")
         .replace("}", "\}")
-        .replace(".", "\.")
-        .replace("!", "\!")
     )
 
 
