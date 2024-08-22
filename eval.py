@@ -8,6 +8,8 @@ import pandas as pd
 
 import os
 import dotenv
+import threading
+from queue import Queue
 
 dotenv.load_dotenv("env")
 
@@ -101,27 +103,51 @@ Score 5: The response is completely correct, accurate, and factual.
 
 ###Feedback:"""
 
-res = []
-for item in tqdm(flattened_data):
-    eval = send_question(
-        EVALUATION_PROMPT.format(
-            instruction=item["question"],
-            response=item["generated_answer"],
-            reference_answer=item["true_answer"],
-        )
-    )
-    feedback, score = [i.strip() for i in eval.split("[RESULT]")]
-    print(f"Score: {score}\nFeedback: {feedback}")
-    item["feedback"] = feedback
-    item["score"] = score
-    res.append(item)
 
+sem = threading.Semaphore(6)
+
+q_lock = threading.Lock()
+
+
+def judge(item, q):
+    with sem:
+        eval = send_question(
+            EVALUATION_PROMPT.format(
+                instruction=item["question"],
+                response=item["generated_answer"],
+                reference_answer=item["true_answer"],
+            )
+        )
+
+    try:
+        feedback, score = [i.strip() for i in eval.split("[RESULT]")]
+        print(f"Score: {score}\nFeedback: {feedback}")
+        item["feedback"] = feedback
+        item["score"] = score
+
+        with q_lock:
+            q.put(item)
+    except Exception:
+        return
+
+
+threads = []
+q = Queue()
+for item in tqdm(flattened_data):
+    thread = threading.Thread(target=judge, args=(item, q))
+    thread.start()
+    threads.append(thread)
+
+[_.join() for _ in threads]
+
+res = []
+while not q.empty():
+    res.append(q.get())
 
 with open("eval_res.json", "w") as f:
     json.dump(res, f, indent=4)
 
 df = pd.read_json("eval_res.json")
-
 
 print(f"Eval file: {eval_file}")
 print(f"Model: {os.environ.get('CHATBOT_MODEL')}\n")
