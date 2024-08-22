@@ -22,7 +22,8 @@ c = Chatbot(
 )
 c.build_database()
 
-data = json.loads(pathlib.Path("questions_ru.json").read_text())
+eval_file = "questions_ru.json"
+data = json.loads(pathlib.Path(eval_file).read_text())
 
 outputs = []
 for example in tqdm(data):
@@ -121,10 +122,11 @@ with open("eval_res.json", "w") as f:
 
 df = pd.read_json("eval_res.json")
 
+
+print(f"Eval file: {eval_file}")
 print(f"Model: {os.environ.get('CHATBOT_MODEL')}\n")
 print(f"Judge: {judge_model}\n")
 print(df.score.value_counts(), end="\n\n")
 print("Mean score: " + str(df.score[df.score != 0].mean()))
 print("Median score: " + str(df.score[df.score != 0].median()))
 print("Percentage: " + str(df.score[df.score != 0].mean() / 5 * 100))
-

@@ -48,5 +48,5 @@ if __name__ == "__main__":
                 "context": item["context"],
             }
         )
-
-    pathlib.Path("questions_ru.json").write_text(json.dumps(res, indent=2))
+    with open("questions_ru.json", "w", encoding="utf-8") as file:
+        json.dump(res, file, ensure_ascii=False, indent=2)

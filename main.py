@@ -56,7 +56,7 @@ RUSSIAN_ALPHABET = (
 def is_russian(query: str) -> bool:
     return (
         sum((_ in RUSSIAN_ALPHABET for _ in query.lower().strip()))
-        < len(query.strip()) * 0.2
+        > len(query.strip()) * 0.2
     )
 
 
@@ -91,7 +91,7 @@ class RetrieverTool(Tool):
 
     def forward(self, query: str) -> str:
         assert isinstance(query, str), "Your search query must be a string"
-        if not is_russian(query):
+        if is_russian(query):
             query = self.translate(query, "en")
 
         search_res = self.vectordb.search(
@@ -231,23 +231,27 @@ class Chatbot:
             )
             insert_res["insert_count"]
 
-    def translate(self, query: str, lang: str) -> str:
-        prompt = 'Please ignore all previous instructions. Please respond only in the {language} language. Do not explain what you are doing. Do not self reference. You are an expert translator that will be tasked with translating and improving the spelling/grammar/literary quality of a piece of text. Please rewrite the translated text in your tone of voice and writing style. Ensure that the meaning of the original text is not changed. Respond only with the translation, do not add any other words and phrases, do not agree with me and say "okay, here it is" and do not add any other notes. If you succeed, you will get $380.'
-
+    def translate(self, query: str, lang: str = "ru") -> str:
         match lang:
             case "ru":
                 lang = "Russian"
-            case "eng":
+            case "en":
                 lang = "English"
 
-        prompt.format(language=lang)
+        prompt = f'Please ignore all previous instructions. Please respond only in the {lang} language. Do not explain what you are doing. Do not self reference. You are an expert translator that will be tasked with translating and improving the spelling/grammar/literary quality of a piece of text. Please rewrite the translated text in your tone of voice and writing style. Ensure that the meaning of the original text is not changed. Do not translate links to websites and email addresses. Respond only with the translation, do not add any other words and phrases, do not agree with me and say "okay, here it is" and do not add any other notes. If you succeed, you will get $380. Final response should be written in {lang}.'
 
         messages = [
             {"role": "system", "content": prompt},
             {"role": "user", "content": query},
         ]
 
-        return self.llm_engine(messages)
+        print(prompt)
+        print(query)
+
+        res = self.llm_engine(messages)
+
+        print(res)
+        return res
 
     def question(self, question: str) -> str:
         enchanced_question = f"""Using the information contained in your knowledge base, which you can access with the 'retriever' tool, give a comprehensive answer to the question below.
@@ -258,7 +262,7 @@ If you did not find anything after calling retriever multiple times, do not come
 You should call retriever at least once, even if you think you cannot help with the query -- because, for example, if user has suicide thoughts, you can find information on local mental health hotline in the knowledge base.
 Your queries should not be questions but affirmative form sentences: e.g. rather than "Which scholarships are available in Skoltech?", query should be "Scholarships in Skoltech".
 If the user asks you a question in a language other than English, you should answer in that language, e.g. if the question is in Russian, your final answer should be in Russian.
-The knowledge base is about Russian University called Skoltech. Questions on all other themes should not be answered if responses are not present in the knowledge base.
+The knowledge base is about University called Skoltech. Questions on all other themes should not be answered if responses are not present in the knowledge base.
 
 Question:
 {question}"""
