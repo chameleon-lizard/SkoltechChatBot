@@ -14,6 +14,8 @@ from queue import Queue
 dotenv.load_dotenv("env")
 
 judge_model = "openai/gpt-4o-mini"
+eval_file = "questions_en.json"
+
 
 c = Chatbot(
     f"{os.environ.get('CHATBOT_MODEL')}",
@@ -24,7 +26,6 @@ c = Chatbot(
 )
 c.build_database()
 
-eval_file = "questions_ru.json"
 data = json.loads(pathlib.Path(eval_file).read_text())
 
 outputs = []
