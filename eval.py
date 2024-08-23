@@ -16,7 +16,6 @@ dotenv.load_dotenv("env")
 judge_model = "openai/gpt-4o-mini"
 eval_file = "questions_en.json"
 
-
 c = Chatbot(
     f"{os.environ.get('CHATBOT_MODEL')}",
     f"{os.environ.get('API_LINK')}",

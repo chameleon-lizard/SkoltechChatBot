@@ -101,8 +101,6 @@ class RetrieverTool(Tool):
 
     def forward(self, query: str) -> str:
         assert isinstance(query, str), "Your search query must be a string"
-        if is_russian(query):
-            query = self.translate(query, "en")
 
         search_res = self.vectordb.search(
             collection_name=self.vector_collection,
@@ -118,7 +116,11 @@ class RetrieverTool(Tool):
             (res["entity"]["text"], res["distance"]) for res in search_res[0]
         ]
 
-        bm25_res = self.bm25.invoke(query, k=10)
+        if is_russian(query):
+            translated_query = self.translate(query, 'en')
+            bm25_res = self.bm25.invoke(translated_query, k=10)
+        else:
+            bm25_res = self.bm25.invoke(query, k=10)
 
         retrieved_lines_with_distances += [(_.page_content, 0) for _ in bm25_res]
 
@@ -284,7 +286,7 @@ class Chatbot:
         print(res)
         return res
 
-    def is_link_or_email(text):
+    def is_link_or_email(self, text):
         return bool(re.match(r"^(\w+\.)?\w+\.(ru|com|net|org|gov)(\/.+)?|[\w\.-]+@[\w\.-]+\.\w+$", text, re.IGNORECASE))
 
     def question(self, question: str) -> str:
@@ -319,7 +321,7 @@ Question:
         ):
             return res
         elif is_russian(question) and not is_russian(res):
-            if is_link_or_email(res):
+            if self.is_link_or_email(res):
                 return res
             return self.translate(res, "ru")
         else:
