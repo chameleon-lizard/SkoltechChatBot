@@ -330,3 +330,23 @@ Mean score: 4.0606060606060606
 Median score: 4.0
 Percentage: 81.21212121212122
 
+
+## qwen-2-72b-instruct api, intfloat/multilingual-e5-large-instruct embedder, no translate for embedder, translate for bm25, paragraph_chunker, 24 chunks, BAAI/bge-reranker-v2-m3 reranker, top-n 6, hybrid search, bm25 chunk size 100/10, with qwen translation prompt, manual fixing of thought, fixed translate:
+Eval file: questions_en.json
+Model: qwen/qwen-2-72b-instruct
+
+Judge: openai/gpt-4o-mini
+
+score
+5    34
+4    22
+3     7
+2     1
+1     1
+0     5
+Name: count, dtype: int64
+
+Mean score: 4.338461538461538
+Median score: 5.0
+Percentage: 86.76923076923076
+
