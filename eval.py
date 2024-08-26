@@ -47,7 +47,7 @@ def judge(item, q):
         return
 
 
-eval_files = ["data/questions_en.json", 'data/questions_ru.json']
+eval_files = ["data/questions_en.json", "data/questions_ru.json"]
 
 c = Chatbot(
     f"{os.environ.get('CHATBOT_MODEL')}",
@@ -78,10 +78,10 @@ for idx, eval_file in enumerate(eval_files):
 
         outputs.append(result)
 
-    with open(f"eval_ans_{idx}.json", "w") as f:
+    with open(f"eval/eval_ans_{idx}.json", "w") as f:
         json.dump(outputs, f)
 
-    flattened_data = json.loads(pathlib.Path(f"eval_ans_{idx}.json").read_text())
+    flattened_data = json.loads(pathlib.Path(f"eval/eval_ans_{idx}.json").read_text())
 
     sem = threading.Semaphore(6)
 
@@ -100,12 +100,12 @@ for idx, eval_file in enumerate(eval_files):
     while not q.empty():
         res.append(q.get())
 
-    with open(f"eval_res_{idx}.json", "w") as f:
+    with open(f"eval/eval_res_{idx}.json", "w") as f:
         json.dump(res, f, indent=4)
 
 
 for idx, eval_file in enumerate(eval_files):
-    df = pd.read_json(f"eval_res_{idx}.json")
+    df = pd.read_json(f"eval/eval_res_{idx}.json")
 
     print(f"Eval file: {eval_file}\n")
     print(f"Reader model: {os.environ.get('CHATBOT_MODEL')}")
@@ -116,4 +116,4 @@ for idx, eval_file in enumerate(eval_files):
     print("Mean score: " + str(df.score[df.score != 0].mean()))
     print("Median score: " + str(df.score[df.score != 0].median()))
     print("Percentage: " + str(df.score[df.score != 0].mean() / 5 * 100))
-    print('\n\n')
+    print("\n\n")

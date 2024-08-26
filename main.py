@@ -1,5 +1,4 @@
 import pathlib
-import itertools
 import dotenv
 import os
 
@@ -73,7 +72,7 @@ class RetrieverTool(Tool):
         ]
 
         if utils.is_russian(query):
-            translated_query = self.translate(query, 'en')
+            translated_query = self.translate(query, "en")
             bm25_res = self.bm25.invoke(translated_query, k=10)
         else:
             bm25_res = self.bm25.invoke(query, k=10)
@@ -115,8 +114,12 @@ class Chatbot:
             base_url=api_link,
         )
 
-        self.embedding_model = SentenceTransformer(f"{os.environ.get('EMBEDDER_MODEL')}")
-        self.reranker_model = FlagReranker(f"{os.environ.get('RERANKER_MODEL')}", use_fp16=True)
+        self.embedding_model = SentenceTransformer(
+            f"{os.environ.get('EMBEDDER_MODEL')}"
+        )
+        self.reranker_model = FlagReranker(
+            f"{os.environ.get('RERANKER_MODEL')}", use_fp16=True
+        )
 
         self.docs = [
             (pathlib.Path(document_path).read_text(), document_path)
@@ -170,10 +173,11 @@ class Chatbot:
 
     def load_database(self) -> None:
         self.milvus_client.load_collection(self.vector_collection)
-    
-    def emb_text(self, text):
-        return self.embedding_model.encode(prompts.EMBEDDER_PROMPT + text, normalize_embeddings=True)
 
+    def emb_text(self, text):
+        return self.embedding_model.encode(
+            prompts.EMBEDDER_PROMPT + text, normalize_embeddings=True
+        )
 
     def build_database(self) -> None:
         test_embedding = self.emb_text("This is a test")
@@ -223,7 +227,11 @@ class Chatbot:
         print(res)
         return res
 
-    def question(self, question: str) -> str:
+    def question(
+        self,
+        question: str,
+        last_three_messages: list,
+    ) -> str:
         res = self.agent.run(prompts.ENCHANCED_QUESTION + question)
 
         if self.verbose:

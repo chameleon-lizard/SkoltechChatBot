@@ -1,0 +1,41 @@
+version: '3'
+
+services:
+  db:
+    image: postgres:13
+    env_file:
+      - .env
+    ports:
+      - "5432"
+
+  vllm:
+    image: vllm/vllm-openai:latest
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+    volumes:
+      - ~/.cache/huggingface:/root/.cache/huggingface
+    ports:
+      - "8001"
+    command: --model Qwen/Qwen2-7B-Instruct --gpu-memory-utilization 0.75 --max-model-len 16348 --port 8001
+    ipc: host
+
+  app:
+    image: scb:latest
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+    volumes:
+      - .:/app
+      - ~/.cache/huggingface:/root/.cache/huggingface
+    env_file:
+      - .env
+    command: python start_bot.py
+    depends_on:
+      - db
+      - vllm
+
+networks:
+  default:
+    internal: true
+
