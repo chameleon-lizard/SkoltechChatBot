@@ -112,6 +112,24 @@ class BotDB:
         )
         self.conn.commit()
 
+    def get_replies(self, chat_id, message_id):
+        """
+        Retrieves all messages that are replies to a specific message in a given chat.
+
+        Args:
+            chat_id (int): The Telegram ID of the user (chat ID).
+            message_id (int): The ID of the message to retrieve replies for.
+
+        Returns:
+            list: A list of tuples, where each tuple contains the message text and the date and time it was sent.
+        """
+        self.cursor.execute(
+            "SELECT message_text, message_date FROM messages WHERE chat_id = %s AND reply_to = %s ORDER BY message_date ASC",
+            (chat_id, message_id),
+        )
+        res = self.cursor.fetchall()
+        return res if res else []
+
     def add_message(self, message_id, telegram_id, message_text, reply_to=None):
         """
         Adds a new message to the database.
@@ -154,7 +172,7 @@ class BotDB:
             list: A list of tuples, where each tuple contains the text of a message and the date and time it was sent.
         """
         self.cursor.execute(
-            "SELECT message_text FROM messages WHERE chat_id = %s ORDER BY message_date DESC LIMIT %s",
+            "SELECT message_text, id FROM messages WHERE chat_id = %s ORDER BY message_date DESC LIMIT %s",
             (chat_id, n),
         )
         return self.cursor.fetchall()

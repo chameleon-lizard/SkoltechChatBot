@@ -142,7 +142,7 @@ class Chatbot:
 
         self.bm25 = BM25Retriever.from_texts(bm25_docs)
 
-        retriever_tool = RetrieverTool(
+        self.retriever_tool = RetrieverTool(
             self.milvus_client,
             self.vector_collection,
             self.bm25,
@@ -153,9 +153,9 @@ class Chatbot:
         )
 
         self.agent = ReactJsonAgent(
-            tools=[retriever_tool],
+            tools=[self.retriever_tool],
             llm_engine=self.llm_engine,
-            max_iterations=4,
+            max_iterations=3,
             verbose=2 if verbose else 0,
         )
 
@@ -165,7 +165,7 @@ class Chatbot:
             messages=messages,
             temperature=0.3,
             n=1,
-            stop=stop_sequences + ["<end_action>"],
+            stop=stop_sequences,
             max_tokens=1024,
         )
 
@@ -230,14 +230,13 @@ class Chatbot:
     def question(
         self,
         question: str,
-        last_three_messages: list,
     ) -> str:
         res = self.agent.run(prompts.ENCHANCED_QUESTION + question)
 
         if self.verbose:
             print(question, res)
 
-        if "Thought: " in res or '"action": "' in res:
+        if not res or "Thought: " in res or '"action": "' in res:
             if "final_answer" in res:
                 res = res.split('final_answer"')[1]
                 res = res.split("\n}")[0]

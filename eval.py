@@ -54,7 +54,7 @@ c = Chatbot(
     f"{os.environ.get('API_LINK')}",
     f"{os.environ.get('VSEGPT_TOKEN')}",
     ["data/orientation.md"],
-    verbose=False,
+    verbose=True,
 )
 c.build_database()
 
@@ -62,7 +62,7 @@ for idx, eval_file in enumerate(eval_files):
     data = json.loads(pathlib.Path(eval_file).read_text())
 
     outputs = []
-    for example in tqdm(data):
+    for example in tqdm(data[:5]):
         question = example["question"]
         if question in [output["question"] for output in outputs]:
             continue
@@ -77,7 +77,6 @@ for idx, eval_file in enumerate(eval_files):
         }
 
         outputs.append(result)
-
     with open(f"eval/eval_ans_{idx}.json", "w") as f:
         json.dump(outputs, f)
 
