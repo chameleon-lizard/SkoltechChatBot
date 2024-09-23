@@ -40,7 +40,7 @@ bot = telebot.TeleBot(
 c = Chatbot(
     f"{os.environ.get('CHATBOT_MODEL')}",
     f"{os.environ.get('API_LINK')}",
-    f"{os.environ.get('VSEGPT_TOKEN')}",
+    f"{os.environ.get('TOKEN')}",
     ["data/orientation.md"],
 )
 c.build_database()

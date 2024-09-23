@@ -19,7 +19,7 @@ dotenv.load_dotenv("env")
 def judge(item, q):
     judge_model = f"{os.environ.get('JUDGE_MODEL')}"
     judge_api_link = f"{os.environ.get('JUDGE_API_LINK')}"
-    token = f"{os.environ.get('VSEGPT_TOKEN')}"
+    token = f"{os.environ.get('TOKEN')}"
 
     with sem:
         eval = utils.send_question(
@@ -52,7 +52,7 @@ eval_files = ["data/questions_en.json", "data/questions_ru.json"]
 c = Chatbot(
     f"{os.environ.get('CHATBOT_MODEL')}",
     f"{os.environ.get('API_LINK')}",
-    f"{os.environ.get('VSEGPT_TOKEN')}",
+    f"{os.environ.get('TOKEN')}",
     ["data/orientation.md"],
     verbose=True,
 )

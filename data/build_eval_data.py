@@ -42,7 +42,7 @@ def split_text(text: str, semantic_chunker: SemanticChunker) -> list:
 def send_question(
     prompt: str,
 ):
-    token = f"{os.environ.get('VSEGPT_TOKEN')}"
+    token = f"{os.environ.get('TOKEN')}"
 
     client = OpenAI(
         api_key=token,

@@ -18,7 +18,7 @@ def translate(query: str) -> str:
     ]
 
     client = openai.OpenAI(
-        api_key=f"{os.environ.get('VSEGPT_TOKEN')}",
+        api_key=f"{os.environ.get('TOKEN')}",
         base_url=f"{os.environ.get('API_LINK')}",
     )
 
